@@ -1,0 +1,39 @@
+- name: Show k3s status
+  hosts: k3s
+  gather_facts: false
+  become: true
+  vars_files:
+    - ../group_vars/k3s.yml
+
+  tasks:
+    - name: Check service state
+      command: systemctl is-active k3s
+      register: k3s_service
+      changed_when: false
+      failed_when: false
+
+    - name: Check k3s version
+      command: k3s --version
+      register: k3s_version
+      changed_when: false
+      failed_when: false
+
+    - name: Get cluster nodes
+      command: k3s kubectl get nodes -o wide
+      register: k3s_nodes
+      changed_when: false
+      failed_when: false
+
+    - name: Get cluster pods
+      command: k3s kubectl get pods -A
+      register: k3s_pods
+      changed_when: false
+      failed_when: false
+
+    - name: Print status
+      debug:
+        msg:
+          - "service: {{ k3s_service.stdout | default('missing') }}"
+          - "version: {{ k3s_version.stdout | default('missing') }}"
+          - "nodes:\n{{ k3s_nodes.stdout | default('unavailable') }}"
+          - "pods:\n{{ k3s_pods.stdout | default('unavailable') }}"

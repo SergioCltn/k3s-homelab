@@ -1,0 +1,26 @@
+- name: Uninstall k3s server
+  hosts: k3s
+  gather_facts: false
+  become: true
+  vars_files:
+    - ../group_vars/k3s.yml
+
+  tasks:
+    - name: Check whether uninstall script exists
+      stat:
+        path: /usr/local/bin/k3s-uninstall.sh
+      register: k3s_uninstall
+
+    - name: Run k3s uninstall script
+      command: /usr/local/bin/k3s-uninstall.sh
+      when: k3s_uninstall.stat.exists
+
+    - name: Verify service is removed
+      command: systemctl status k3s
+      register: k3s_status
+      changed_when: false
+      failed_when: false
+
+    - name: Show uninstall result
+      debug:
+        msg: "k3s.service status rc={{ k3s_status.rc }}"

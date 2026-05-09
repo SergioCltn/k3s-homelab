@@ -1,0 +1,94 @@
+- name: Install k3s server
+  hosts: k3s
+  gather_facts: true
+  become: true
+  vars_files:
+    - ../group_vars/k3s.yml
+
+  tasks:
+    - name: Check passwordless sudo
+      command: sudo -n true
+      changed_when: false
+
+    - name: Update apt cache and upgrade system packages
+      apt:
+        update_cache: true
+        upgrade: dist
+        autoremove: true
+      when: k3s_update_system | bool
+
+    - name: Check whether k3s is already installed
+      stat:
+        path: /usr/local/bin/k3s
+      register: k3s_binary
+
+    - name: Ensure k3s config directory exists
+      file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: "0755"
+
+    - name: Write managed k3s config
+      copy:
+        dest: /etc/rancher/k3s/config.yaml
+        mode: "0600"
+        content: |
+          {{ k3s_server_config | to_nice_yaml(indent=2) }}
+      register: k3s_config
+
+    - name: Install k3s
+      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL={{ k3s_channel | quote }} INSTALL_K3S_EXEC={{ k3s_install_exec | quote }} sh -
+      args:
+        executable: /bin/bash
+      when: not k3s_binary.stat.exists
+
+    - name: Restart k3s when config changes
+      systemd:
+        name: k3s
+        state: restarted
+      when:
+        - k3s_binary.stat.exists
+        - k3s_config.changed
+
+    - name: Ensure k3s service is enabled and started
+      systemd:
+        name: k3s
+        enabled: true
+        state: started
+
+    - name: Wait for API readiness
+      command: k3s kubectl get --raw=/readyz
+      register: readyz
+      retries: 60
+      delay: 3
+      until: readyz.rc == 0
+      changed_when: false
+
+    - name: Read kubeconfig
+      slurp:
+        src: /etc/rancher/k3s/k3s.yaml
+      register: remote_kubeconfig
+
+    - name: Ensure local kubeconfig directory exists
+      become: false
+      delegate_to: localhost
+      file:
+        path: "{{ k3s_kubeconfig_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Write local kubeconfig
+      become: false
+      delegate_to: localhost
+      copy:
+        dest: "{{ k3s_kubeconfig_dir }}/{{ k3s_kubeconfig_name }}"
+        mode: "0600"
+        content: >-
+          {{ (remote_kubeconfig.content | b64decode)
+             | replace('127.0.0.1', ansible_host | default(ansible_facts['default_ipv4']['address'])) }}
+
+    - name: Show kubeconfig path
+      become: false
+      delegate_to: localhost
+      debug:
+        msg: "Kubeconfig written to {{ k3s_kubeconfig_dir }}/{{ k3s_kubeconfig_name }}"
