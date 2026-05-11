@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitea-actions-runner
+  namespace: gitea
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitea-actions-runner
+  template:
+    metadata:
+      labels:
+        app: gitea-actions-runner
+    spec:
+      containers:
+        - name: runner
+          image: gitea/act_runner:0.2.11
+          env:
+            - name: GITEA_INSTANCE_URL
+              value: http://gitea.gitea.svc.cluster.local:3000
+            - name: GITEA_RUNNER_REGISTRATION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gitea-actions-runner
+                  key: registrationToken
+            - name: GITEA_RUNNER_NAME
+              value: gitea-actions-runner
+            - name: GITEA_RUNNER_LABELS
+              value: ubuntu-22.04:docker://catthehacker/ubuntu:act-22.04,linux-arm64:docker://catthehacker/ubuntu:act-22.04
+            - name: DOCKER_HOST
+              value: tcp://127.0.0.1:2375
+          volumeMounts:
+            - name: runner-data
+              mountPath: /data
+        - name: docker
+          image: docker:27-dind
+          env:
+            - name: DOCKER_TLS_CERTDIR
+              value: ""
+          securityContext:
+            privileged: true
+          readinessProbe:
+            tcpSocket:
+              port: 2375
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 2375
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          volumeMounts:
+            - name: runner-data
+              mountPath: /data
+      volumes:
+        - name: runner-data
+          emptyDir: {}

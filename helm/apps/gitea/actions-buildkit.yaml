@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitea-buildkit-cache
+  namespace: gitea
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitea-buildkit
+  namespace: gitea
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitea-buildkit
+  template:
+    metadata:
+      labels:
+        app: gitea-buildkit
+    spec:
+      containers:
+        - name: buildkitd
+          image: moby/buildkit:v0.25.1
+          args:
+            - --addr
+            - tcp://0.0.0.0:1234
+          ports:
+            - name: buildkit
+              containerPort: 1234
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: buildkit-cache
+              mountPath: /var/lib/buildkit
+      volumes:
+        - name: buildkit-cache
+          persistentVolumeClaim:
+            claimName: gitea-buildkit-cache
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitea-buildkit
+  namespace: gitea
+spec:
+  selector:
+    app: gitea-buildkit
+  ports:
+    - name: buildkit
+      port: 1234
+      targetPort: 1234
+      protocol: TCP

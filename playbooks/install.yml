@@ -36,6 +36,14 @@
           {{ k3s_server_config | to_nice_yaml(indent=2) }}
       register: k3s_config
 
+    - name: Write managed k3s registries config
+      copy:
+        dest: /etc/rancher/k3s/registries.yaml
+        mode: "0600"
+        content: |
+          {{ k3s_registries_config | to_nice_yaml(indent=2) }}
+      register: k3s_registries
+
     - name: Install k3s
       shell: curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL={{ k3s_channel | quote }} INSTALL_K3S_EXEC={{ k3s_install_exec | quote }} sh -
       args:
@@ -48,7 +56,7 @@
         state: restarted
       when:
         - k3s_binary.stat.exists
-        - k3s_config.changed
+        - k3s_config.changed or k3s_registries.changed
 
     - name: Ensure k3s service is enabled and started
       systemd:

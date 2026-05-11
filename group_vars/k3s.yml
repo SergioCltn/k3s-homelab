@@ -5,6 +5,14 @@ k3s_server_config:
   disable:
     - traefik
     - servicelb
+k3s_registries_config:
+  mirrors:
+    "192.168.1.243:5000":
+      endpoint:
+        - "http://192.168.1.243:5000"
+    "registry.home.arpa:5000":
+      endpoint:
+        - "http://registry.home.arpa:5000"
 k3s_update_system: true
 k3s_kubeconfig_dir: "{{ playbook_dir }}/../kubeconfig"
 k3s_kubeconfig_name: aetherion.yaml

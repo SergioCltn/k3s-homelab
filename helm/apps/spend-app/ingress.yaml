@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: spend-app-backend
+  namespace: spend-app
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    external-dns.alpha.kubernetes.io/hostname: spendapp.home.arpa
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - spendapp.sergiocltn.com
+      secretName: spendapp-sergiocltn-com-tls
+  rules:
+    - host: spendapp.sergiocltn.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: spend-app-backend
+                port:
+                  number: 8000
+    - host: spendapp.home.arpa
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: spend-app-backend
+                port:
+                  number: 8000

@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spend-app-backend
+  namespace: spend-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spend-app-backend
+  template:
+    metadata:
+      labels:
+        app: spend-app-backend
+    spec:
+      containers:
+        - name: backend
+          image: registry.home.arpa:5000/spend-app-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: spend-app-backend
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spend-app-backend
+  namespace: spend-app
+spec:
+  selector:
+    app: spend-app-backend
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
