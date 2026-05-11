@@ -89,6 +89,11 @@ Important files:
 - `helm/platform/external-dns-namespace.yaml`
 - `helm/platform/external-dns.yaml`
 - `helm/platform/external-dns-pihole.secret.yaml.example`
+- `helm/platform/argocd-values.yaml`
+- `helm/platform/argocd-server-ingress.yaml`
+- `helm/platform/argocd-application-spend-app.yaml`
+- `helm/platform/argocd-app-of-apps.yaml`
+- `helm/platform/argocd-apps/`
 - `helm/access/cloudflared-deployment.yaml`
 - `helm/apps/pi-hole/namespace.yaml`
 - `helm/apps/pi-hole/pi-hole.yaml`
@@ -111,6 +116,7 @@ These install:
 - `ingress-nginx` exposed through a `LoadBalancer` service for LAN access
 - `cert-manager` with Cloudflare DNS challenge for Let's Encrypt
 - `external-dns` for automatic LAN DNS records in Pi-hole
+- `Argo CD` for GitOps-style reconciliation on the LAN
 - `cloudflared` tunnel support for public access behind CGNAT
 - `Pi-hole` for local DNS overrides on the LAN
 - `Gitea` for local Git hosting on the LAN

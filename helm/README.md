@@ -30,6 +30,7 @@ Recommended reading order:
 6. `apps/registry/` if you want a local image registry for pushes and pod pulls.
 7. `apps/spend-app/` to deploy the real application.
 8. `apps/gitea/actions-*.yaml` if you want in-cluster Gitea Actions with BuildKit.
+9. `platform/argocd-*.yaml` if you want Argo CD for GitOps-style reconciliation.
 
 These commands assume:
 
@@ -338,6 +339,113 @@ Quick verification:
 curl -fsS http://192.168.1.243:5000/v2/
 nslookup registry.home.arpa <pi-hole-ip>
 ```
+
+## Deploy Argo CD
+
+Use this when you want GitOps-style application reconciliation from a Git repository into the cluster.
+
+Install the official chart with the checked-in values:
+
+```bash
+helm repo add argo https://argoproj.github.io/argo-helm
+helm repo update
+helm upgrade --install argocd argo/argo-cd \
+  --namespace argocd \
+  --create-namespace \
+  -f helm/platform/argocd-values.yaml
+kubectl rollout status deployment/argocd-server -n argocd
+kubectl rollout status deployment/argocd-repo-server -n argocd
+kubectl rollout status deployment/argocd-applicationset-controller -n argocd
+kubectl rollout status deployment/argocd-redis -n argocd
+kubectl rollout status statefulset/argocd-application-controller -n argocd
+```
+
+Then publish the LAN ingress:
+
+```bash
+kubectl apply -f helm/platform/argocd-server-ingress.yaml
+kubectl get ingress -n argocd
+```
+
+This setup uses:
+
+- the official `argo-cd` Helm chart
+- a LAN-only ingress at `argocd.home.arpa`
+- `external-dns` to publish the hostname through Pi-hole
+- `server.insecure: true` so `ingress-nginx` can terminate plain HTTP on the LAN without Argo CD's own redirect loop
+
+Get the initial admin password:
+
+```bash
+kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d && printf '\n'
+```
+
+Open:
+
+```text
+http://argocd.home.arpa
+```
+
+Default login:
+
+- username: `admin`
+- password: value from `argocd-initial-admin-secret`
+
+Quick verification:
+
+```bash
+kubectl get pods -n argocd
+kubectl logs -n argocd deploy/argocd-server --tail=100
+nslookup argocd.home.arpa <pi-hole-ip>
+curl -I http://argocd.home.arpa
+```
+
+## Create The First Argo CD Application
+
+The checked-in example application tracks the committed `spend-app` Kubernetes manifests from this `k3s` repo.
+
+Apply it with:
+
+```bash
+kubectl apply -f helm/platform/argocd-application-spend-app.yaml
+kubectl get applications.argoproj.io -n argocd
+kubectl describe application spend-app -n argocd
+```
+
+Important detail:
+
+- the application uses the in-cluster Gitea URL `http://gitea.gitea.svc.cluster.local:3000/sergiocltn/k3s.git`
+- this avoids relying on `git.home.arpa`, which is only published through Pi-hole on the LAN side
+
+This first application targets:
+
+- repo: `sergiocltn/k3s`
+- path: `helm/apps/spend-app`
+- destination namespace: `spend-app`
+
+It enables automated self-heal but does not enable prune, so Argo CD can reconcile drift without immediately deleting anything extra you created manually.
+
+## Create The Argo CD App-Of-Apps Root
+
+Use this when you want Argo CD to manage the child `Application` objects from Git as well, not just the workload manifests behind them.
+
+Apply the root app:
+
+```bash
+kubectl apply -f helm/platform/argocd-app-of-apps.yaml
+kubectl get applications.argoproj.io -n argocd
+kubectl describe application root-apps -n argocd
+```
+
+The root app watches:
+
+- `helm/platform/argocd-apps/`
+
+The checked-in child apps currently include:
+
+- `spend-app`
+
+That means future child applications can be added by dropping more `Application` manifests into `helm/platform/argocd-apps/` and letting Argo CD reconcile them.
 
 ## Deploy Gitea
 
