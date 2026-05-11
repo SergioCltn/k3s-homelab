@@ -95,6 +95,7 @@ Important files:
 - `helm/platform/argocd-app-of-apps.yaml`
 - `helm/platform/argocd-apps/`
 - `helm/apps/gitea/kustomization.yaml`
+- `helm/apps/pi-hole/kustomization.yaml`
 - `helm/apps/registry/kustomization.yaml`
 - `helm/access/cloudflared-deployment.yaml`
 - `helm/apps/pi-hole/namespace.yaml`
