@@ -447,6 +447,7 @@ The checked-in child apps currently include:
 - `gitea`
 - `registry`
 - `pi-hole`
+- `external-dns`
 
 That means future child applications can be added by dropping more `Application` manifests into `helm/platform/argocd-apps/` and letting Argo CD reconcile them.
 

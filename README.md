@@ -97,6 +97,7 @@ Important files:
 - `helm/apps/gitea/kustomization.yaml`
 - `helm/apps/pi-hole/kustomization.yaml`
 - `helm/apps/registry/kustomization.yaml`
+- `helm/platform/external-dns-app/`
 - `helm/access/cloudflared-deployment.yaml`
 - `helm/apps/pi-hole/namespace.yaml`
 - `helm/apps/pi-hole/pi-hole.yaml`
