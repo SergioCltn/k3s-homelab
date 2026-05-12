@@ -98,9 +98,11 @@ Important files:
 - `helm/apps/pi-hole/kustomization.yaml`
 - `helm/apps/registry/kustomization.yaml`
 - `helm/platform/external-dns-app/`
+- `helm/platform/sealed-secrets-values.yaml`
 - `helm/access/cloudflared-deployment.yaml`
 - `helm/apps/pi-hole/namespace.yaml`
 - `helm/apps/pi-hole/pi-hole.yaml`
+- `helm/apps/pi-hole/pi-hole-web.sealedsecret.yaml`
 - `helm/apps/pi-hole/web-password.secret.yaml.example`
 - `helm/apps/gitea/namespace.yaml`
 - `helm/apps/gitea/gitea.yaml`
@@ -123,6 +125,7 @@ These install:
 - `Argo CD` for GitOps-style reconciliation on the LAN
 - `cloudflared` tunnel support for public access behind CGNAT
 - `Pi-hole` for local DNS overrides on the LAN
+- `Sealed Secrets` for Git-safe encrypted Kubernetes secrets
 - `Gitea` for local Git hosting on the LAN
 - in-cluster Gitea Actions runner with BuildKit-based image builds
 - in-cluster Docker registry for local image pushes and pod pulls

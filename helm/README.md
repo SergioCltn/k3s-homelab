@@ -448,8 +448,45 @@ The checked-in child apps currently include:
 - `registry`
 - `pi-hole`
 - `external-dns`
+- `sealed-secrets`
 
 That means future child applications can be added by dropping more `Application` manifests into `helm/platform/argocd-apps/` and letting Argo CD reconcile them.
+
+## Deploy Sealed Secrets
+
+Use this when you want to keep encrypted secrets in Git and let the cluster turn them back into normal `Secret` objects.
+
+The checked-in app-of-apps child installs the official Sealed Secrets controller into namespace `sealed-secrets`.
+
+Quick verification:
+
+```bash
+kubectl get applications.argoproj.io -n argocd sealed-secrets
+kubectl get pods -n sealed-secrets
+kubectl get crd sealedsecrets.bitnami.com
+```
+
+Example sealed secret now checked into this repo:
+
+- `helm/apps/pi-hole/pi-hole-web.sealedsecret.yaml`
+
+That file is included by `helm/apps/pi-hole/kustomization.yaml`, so Argo CD can manage the Pi-hole secret from Git without storing the raw password in the repository.
+
+To seal another secret later, use the controller's public key through `kubeseal`:
+
+```bash
+kubectl create secret generic my-secret \
+  --namespace my-namespace \
+  --from-literal=key=value \
+  --dry-run=client -o yaml \
+| kubeseal \
+  --controller-name sealed-secrets-controller \
+  --controller-namespace sealed-secrets \
+  --format yaml \
+> my-secret.sealedsecret.yaml
+```
+
+Commit the `SealedSecret`, not the plain `Secret`.
 
 ## Deploy Gitea
 
