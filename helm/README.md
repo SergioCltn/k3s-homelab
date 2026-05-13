@@ -674,6 +674,34 @@ kubectl apply -f helm/apps/spend-app/postgres.yaml
 kubectl rollout status deployment/spend-app-postgres -n spend-app
 ```
 
+Optional backup job:
+
+```bash
+kubectl apply -f helm/apps/spend-app/postgres-backup.yaml
+kubectl get cronjob -n spend-app spend-app-postgres-backup
+```
+
+This creates:
+
+- a backup PVC: `spend-app-postgres-backups`
+- a daily `pg_dump` CronJob at `03:00`
+- gzip-compressed dumps under `/backups`
+- automatic cleanup for backup files older than 7 days
+
+To trigger one backup immediately:
+
+```bash
+kubectl create job --from=cronjob/spend-app-postgres-backup spend-app-postgres-backup-manual -n spend-app
+kubectl logs -n spend-app job/spend-app-postgres-backup-manual
+```
+
+To inspect backup job history:
+
+```bash
+kubectl get cronjob -n spend-app spend-app-postgres-backup
+kubectl get jobs -n spend-app
+```
+
 The checked-in backend manifest now uses `spend-app-backend:cluster` because the currently deployed backend image was imported directly into the k3s node's containerd.
 
 If you want to switch back to a registry-pulled image later, update `helm/apps/spend-app/backend.yaml` accordingly.
