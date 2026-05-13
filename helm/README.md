@@ -226,12 +226,14 @@ Apply the namespace first:
 kubectl apply -f helm/platform/external-dns-namespace.yaml
 ```
 
-Create the Pi-hole API password secret from the example:
+The checked-in `helm/platform/external-dns-app/external-dns-pihole.sealedsecret.yaml` is the current cluster-specific secret managed by Sealed Secrets.
+
+If you need to rotate it, regenerate a plain Secret locally from the example and seal it again:
 
 ```bash
 cp helm/platform/external-dns-pihole.secret.yaml.example helm/platform/external-dns-pihole.secret.yaml
 $EDITOR helm/platform/external-dns-pihole.secret.yaml
-kubectl apply -f helm/platform/external-dns-pihole.secret.yaml
+kubeseal --controller-name sealed-secrets-controller --controller-namespace sealed-secrets --format yaml < helm/platform/external-dns-pihole.secret.yaml > helm/platform/external-dns-app/external-dns-pihole.sealedsecret.yaml
 ```
 
 Deploy ExternalDNS:
@@ -654,18 +656,20 @@ Create the namespace first:
 kubectl apply -f helm/apps/spend-app/namespace.yaml
 ```
 
-Create the database and backend secrets from the examples:
+The checked-in `spend-app` secrets are cluster-specific Sealed Secrets.
+
+If you need to rotate them, regenerate plain Secrets locally from the examples and reseal them:
 
 ```bash
 cp helm/apps/spend-app/postgres.secret.yaml.example helm/apps/spend-app/postgres.secret.yaml
 cp helm/apps/spend-app/backend.secret.yaml.example helm/apps/spend-app/backend.secret.yaml
 $EDITOR helm/apps/spend-app/postgres.secret.yaml
 $EDITOR helm/apps/spend-app/backend.secret.yaml
-kubectl apply -f helm/apps/spend-app/postgres.secret.yaml
-kubectl apply -f helm/apps/spend-app/backend.secret.yaml
+kubeseal --controller-name sealed-secrets-controller --controller-namespace sealed-secrets --format yaml < helm/apps/spend-app/postgres.secret.yaml > helm/apps/spend-app/spend-app-postgres.sealedsecret.yaml
+kubeseal --controller-name sealed-secrets-controller --controller-namespace sealed-secrets --format yaml < helm/apps/spend-app/backend.secret.yaml > helm/apps/spend-app/spend-app-backend.sealedsecret.yaml
 ```
 
-The password embedded in `DATABASE_URL` must match `POSTGRES_PASSWORD` from `helm/apps/spend-app/postgres.secret.yaml`.
+The password embedded in `DATABASE_URL` must match `POSTGRES_PASSWORD` from the local plain Secret you use to regenerate `helm/apps/spend-app/spend-app-postgres.sealedsecret.yaml`.
 
 Apply the database resources:
 
