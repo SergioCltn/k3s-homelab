@@ -89,8 +89,8 @@ Important files:
 - `helm/platform/external-dns-namespace.yaml`
 - `helm/platform/external-dns.yaml`
 - `helm/platform/external-dns-pihole.secret.yaml.example`
+- `helm/platform/argocd-app/`
 - `helm/platform/argocd-values.yaml`
-- `helm/platform/argocd-server-ingress.yaml`
 - `helm/platform/argocd-application-spend-app.yaml`
 - `helm/platform/argocd-app-of-apps.yaml`
 - `helm/platform/argocd-apps/`

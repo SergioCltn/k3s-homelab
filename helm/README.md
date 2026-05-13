@@ -365,7 +365,7 @@ kubectl rollout status statefulset/argocd-application-controller -n argocd
 Then publish the LAN ingress:
 
 ```bash
-kubectl apply -f helm/platform/argocd-server-ingress.yaml
+kubectl apply -f helm/platform/argocd-app/argocd-server-ingress.yaml
 kubectl get ingress -n argocd
 ```
 
@@ -445,12 +445,21 @@ The root app watches:
 
 The checked-in child apps currently include:
 
+- `argocd`
 - `spend-app`
 - `gitea`
 - `registry`
 - `pi-hole`
 - `external-dns`
 - `sealed-secrets`
+
+The checked-in `argocd` child app pins the currently installed chart version and combines:
+
+- the upstream `argo-cd` Helm chart
+- `helm/platform/argocd-values.yaml`
+- `helm/platform/argocd-app/argocd-server-ingress.yaml`
+
+That lets the bootstrap install hand off to Argo CD without rotating the existing admin secret.
 
 That means future child applications can be added by dropping more `Application` manifests into `helm/platform/argocd-apps/` and letting Argo CD reconcile them.
 

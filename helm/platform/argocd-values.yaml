@@ -1,0 +1,20 @@
+crds:
+  install: true
+
+dex:
+  enabled: false
+
+notifications:
+  enabled: false
+
+configs:
+  secret:
+    createSecret: false
+  params:
+    server.insecure: "true"
+
+server:
+  ingress:
+    enabled: false
+  service:
+    type: ClusterIP
