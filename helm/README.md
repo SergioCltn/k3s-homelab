@@ -540,6 +540,23 @@ http://grafana.home.arpa
 http://prometheus.home.arpa
 ```
 
+Grafana dashboards can now be managed from Git through ConfigMaps in `helm/platform/monitoring/app/`.
+
+To add another dashboard:
+
+1. Create a `ConfigMap` in `helm/platform/monitoring/app/` with the label `grafana_dashboard: "1"`.
+2. Put the exported dashboard JSON under a `data:` key such as `<name>.json`.
+3. Add the new file to `helm/platform/monitoring/app/kustomization.yaml`.
+4. Commit the change; Argo CD will sync it and Grafana will pick it up automatically.
+
+Example file already included:
+
+`helm/platform/monitoring/app/grafana-dashboard-k3s-cluster-overview.yaml`
+
+Second example included for the application stack:
+
+`helm/platform/monitoring/app/grafana-dashboard-spend-app-overview.yaml`
+
 ## Deploy Gitea
 
 Use this when you want a lightweight self-hosted Git service on the LAN that can work with your in-cluster registry and future CI.
