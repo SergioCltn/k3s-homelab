@@ -30,7 +30,8 @@ Recommended reading order:
 6. `apps/registry/` if you want a local image registry for pushes and pod pulls.
 7. `apps/spend-app/` to deploy the real application.
 8. `apps/gitea/actions-*.yaml` if you want in-cluster Gitea Actions with BuildKit.
-9. `platform/argocd-*.yaml` if you want Argo CD for GitOps-style reconciliation.
+9. `platform/argocd/` if you want Argo CD for GitOps-style reconciliation.
+10. `platform/monitoring/` if you want Prometheus and Grafana on the LAN.
 
 These commands assume:
 
@@ -498,6 +499,46 @@ kubectl create secret generic my-secret \
 ```
 
 Commit the `SealedSecret`, not the plain `Secret`.
+
+## Deploy Monitoring
+
+Use this when you want cluster metrics, dashboards, and alert-rule evaluation on the LAN.
+
+The checked-in `monitoring` child app installs the upstream `kube-prometheus-stack` chart through Argo CD with a lightweight single-node profile:
+
+- `alertmanager` disabled for now
+- `kubeEtcd`, `kubeScheduler`, and `kubeControllerManager` scrapes disabled for k3s
+- `Grafana` exposed at `grafana.home.arpa`
+- `Prometheus` exposed at `prometheus.home.arpa`
+
+Apply the child app:
+
+```bash
+kubectl apply -f helm/platform/argocd/apps/monitoring.yaml
+kubectl get applications.argoproj.io -n argocd monitoring
+kubectl describe application monitoring -n argocd
+```
+
+Once synced, verify the workloads:
+
+```bash
+kubectl get pods -n monitoring
+kubectl get ingress -n monitoring
+```
+
+Grafana admin credentials are stored in the chart-managed secret:
+
+```bash
+kubectl get secret monitoring-grafana -n monitoring -o jsonpath='{.data.admin-user}' | base64 -d && printf '\n'
+kubectl get secret monitoring-grafana -n monitoring -o jsonpath='{.data.admin-password}' | base64 -d && printf '\n'
+```
+
+Open:
+
+```text
+http://grafana.home.arpa
+http://prometheus.home.arpa
+```
 
 ## Deploy Gitea
 

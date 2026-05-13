@@ -86,6 +86,7 @@ Important files:
 - `helm/platform/cert-manager/`
 - `helm/platform/external-dns/`
 - `helm/platform/argocd/`
+- `helm/platform/monitoring/`
 - `helm/apps/gitea/kustomization.yaml`
 - `helm/apps/pi-hole/kustomization.yaml`
 - `helm/apps/registry/kustomization.yaml`
@@ -117,6 +118,7 @@ These install:
 - `cloudflared` tunnel support for public access behind CGNAT
 - `Pi-hole` for local DNS overrides on the LAN
 - `Sealed Secrets` for Git-safe encrypted Kubernetes secrets
+- `Prometheus` and `Grafana` for cluster monitoring on the LAN
 - `Gitea` for local Git hosting on the LAN
 - in-cluster Gitea Actions runner with BuildKit-based image builds
 - in-cluster Docker registry for local image pushes and pod pulls
