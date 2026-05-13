@@ -70,6 +70,8 @@ prometheus:
               storage: 10Gi
 
 prometheusOperator:
+  admissionWebhooks:
+    enabled: false
   resources:
     requests:
       cpu: 50m
