@@ -53,9 +53,9 @@ helm repo update
 helm upgrade --install metallb metallb/metallb \
   --namespace metallb-system \
   --create-namespace \
-  -f helm/platform/metallb-values.yaml
+  -f helm/platform/metallb/values.yaml
 kubectl wait --for=condition=Ready pod -n metallb-system -l app.kubernetes.io/component=controller --timeout=120s
-kubectl apply -f helm/platform/metallb-ipaddresspool.yaml
+kubectl apply -f helm/platform/metallb/ipaddresspool.yaml
 ```
 
 The configured address pool is `192.168.1.240-192.168.1.250`.
@@ -68,7 +68,7 @@ helm repo update
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
-  -f helm/platform/ingress-nginx-values.yaml
+  -f helm/platform/ingress-nginx/values.yaml
 ```
 
 This exposes the ingress controller with a `LoadBalancer` service so MetalLB can assign it an IP for LAN access.
@@ -83,7 +83,7 @@ helm repo update
 helm upgrade --install cert-manager jetstack/cert-manager \
   --namespace cert-manager \
   --create-namespace \
-  -f helm/platform/cert-manager-values.yaml
+  -f helm/platform/cert-manager/values.yaml
 kubectl wait --for=condition=Available deployment -n cert-manager cert-manager --timeout=180s
 kubectl wait --for=condition=Available deployment -n cert-manager cert-manager-webhook --timeout=180s
 kubectl wait --for=condition=Available deployment -n cert-manager cert-manager-cainjector --timeout=180s
@@ -104,7 +104,7 @@ kubectl apply -f helm/access/cloudflare-api-token.secret.yaml
 Create the production issuer:
 
 ```bash
-kubectl apply -f helm/platform/clusterissuer-letsencrypt-production.yaml
+kubectl apply -f helm/platform/cert-manager/clusterissuer-letsencrypt-production.yaml
 kubectl get clusterissuer letsencrypt-production
 ```
 
@@ -223,23 +223,23 @@ Use this when you want Kubernetes ingress resources to create and update LAN DNS
 Apply the namespace first:
 
 ```bash
-kubectl apply -f helm/platform/external-dns-namespace.yaml
+kubectl apply -f helm/platform/external-dns/namespace.yaml
 ```
 
-The checked-in `helm/platform/external-dns-app/external-dns-pihole.sealedsecret.yaml` is the current cluster-specific secret managed by Sealed Secrets.
+The checked-in `helm/platform/external-dns/app/external-dns-pihole.sealedsecret.yaml` is the current cluster-specific secret managed by Sealed Secrets.
 
 If you need to rotate it, regenerate a plain Secret locally from the example and seal it again:
 
 ```bash
-cp helm/platform/external-dns-pihole.secret.yaml.example helm/platform/external-dns-pihole.secret.yaml
-$EDITOR helm/platform/external-dns-pihole.secret.yaml
-kubeseal --controller-name sealed-secrets-controller --controller-namespace sealed-secrets --format yaml < helm/platform/external-dns-pihole.secret.yaml > helm/platform/external-dns-app/external-dns-pihole.sealedsecret.yaml
+cp helm/platform/external-dns/pihole.secret.yaml.example helm/platform/external-dns/pihole.secret.yaml
+$EDITOR helm/platform/external-dns/pihole.secret.yaml
+kubeseal --controller-name sealed-secrets-controller --controller-namespace sealed-secrets --format yaml < helm/platform/external-dns/pihole.secret.yaml > helm/platform/external-dns/app/external-dns-pihole.sealedsecret.yaml
 ```
 
 Deploy ExternalDNS:
 
 ```bash
-kubectl apply -f helm/platform/external-dns.yaml
+kubectl apply -f helm/platform/external-dns/deployment.yaml
 kubectl rollout status deployment/external-dns -n external-dns
 kubectl logs -n external-dns deploy/external-dns --tail=100
 ```
@@ -354,7 +354,7 @@ helm repo update
 helm upgrade --install argocd argo/argo-cd \
   --namespace argocd \
   --create-namespace \
-  -f helm/platform/argocd-values.yaml
+  -f helm/platform/argocd/values.yaml
 kubectl rollout status deployment/argocd-server -n argocd
 kubectl rollout status deployment/argocd-repo-server -n argocd
 kubectl rollout status deployment/argocd-applicationset-controller -n argocd
@@ -365,7 +365,7 @@ kubectl rollout status statefulset/argocd-application-controller -n argocd
 Then publish the LAN ingress:
 
 ```bash
-kubectl apply -f helm/platform/argocd-app/argocd-server-ingress.yaml
+kubectl apply -f helm/platform/argocd/app/argocd-server-ingress.yaml
 kubectl get ingress -n argocd
 ```
 
@@ -404,12 +404,12 @@ curl -I http://argocd.home.arpa
 
 ## Create The First Argo CD Application
 
-The checked-in example application tracks the committed `spend-app` Kubernetes manifests from this `k3s` repo.
+The checked-in `spend-app` child application tracks the committed `spend-app` Kubernetes manifests from this `k3s` repo.
 
 Apply it with:
 
 ```bash
-kubectl apply -f helm/platform/argocd-application-spend-app.yaml
+kubectl apply -f helm/platform/argocd/apps/spend-app.yaml
 kubectl get applications.argoproj.io -n argocd
 kubectl describe application spend-app -n argocd
 ```
@@ -434,14 +434,14 @@ Use this when you want Argo CD to manage the child `Application` objects from Gi
 Apply the root app:
 
 ```bash
-kubectl apply -f helm/platform/argocd-app-of-apps.yaml
+kubectl apply -f helm/platform/argocd/app-of-apps.yaml
 kubectl get applications.argoproj.io -n argocd
 kubectl describe application root-apps -n argocd
 ```
 
 The root app watches:
 
-- `helm/platform/argocd-apps/`
+- `helm/platform/argocd/apps/`
 
 The checked-in child apps currently include:
 
@@ -456,12 +456,12 @@ The checked-in child apps currently include:
 The checked-in `argocd` child app pins the currently installed chart version and combines:
 
 - the upstream `argo-cd` Helm chart
-- `helm/platform/argocd-values.yaml`
-- `helm/platform/argocd-app/argocd-server-ingress.yaml`
+- `helm/platform/argocd/values.yaml`
+- `helm/platform/argocd/app/argocd-server-ingress.yaml`
 
 That lets the bootstrap install hand off to Argo CD without rotating the existing admin secret.
 
-That means future child applications can be added by dropping more `Application` manifests into `helm/platform/argocd-apps/` and letting Argo CD reconcile them.
+That means future child applications can be added by dropping more `Application` manifests into `helm/platform/argocd/apps/` and letting Argo CD reconcile them.
 
 ## Deploy Sealed Secrets
 

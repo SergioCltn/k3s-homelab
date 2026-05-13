@@ -81,24 +81,15 @@ Layout:
 
 Important files:
 
-- `helm/platform/metallb-values.yaml`
-- `helm/platform/metallb-ipaddresspool.yaml`
-- `helm/platform/ingress-nginx-values.yaml`
-- `helm/platform/cert-manager-values.yaml`
-- `helm/platform/clusterissuer-letsencrypt-production.yaml`
-- `helm/platform/external-dns-namespace.yaml`
-- `helm/platform/external-dns.yaml`
-- `helm/platform/external-dns-pihole.secret.yaml.example`
-- `helm/platform/argocd-app/`
-- `helm/platform/argocd-values.yaml`
-- `helm/platform/argocd-application-spend-app.yaml`
-- `helm/platform/argocd-app-of-apps.yaml`
-- `helm/platform/argocd-apps/`
+- `helm/platform/metallb/`
+- `helm/platform/ingress-nginx/`
+- `helm/platform/cert-manager/`
+- `helm/platform/external-dns/`
+- `helm/platform/argocd/`
 - `helm/apps/gitea/kustomization.yaml`
 - `helm/apps/pi-hole/kustomization.yaml`
 - `helm/apps/registry/kustomization.yaml`
-- `helm/platform/external-dns-app/`
-- `helm/platform/sealed-secrets-values.yaml`
+- `helm/platform/sealed-secrets/`
 - `helm/access/cloudflared-deployment.yaml`
 - `helm/apps/pi-hole/namespace.yaml`
 - `helm/apps/pi-hole/pi-hole.yaml`
