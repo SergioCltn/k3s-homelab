@@ -16,6 +16,7 @@ Use the folders by concern:
 - `helm/access/`: Cloudflare DNS and tunnel secrets/manifests
 - `helm/apps/pi-hole/`: Pi-hole for LAN DNS rewrites
 - `helm/apps/gitea/`: self-hosted Git service resources
+- `helm/apps/media/`: downloader stack resources for LAN-only media ingestion
 - `helm/apps/registry/`: in-cluster Docker registry resources
 - `helm/apps/spend-app/`: the real backend, database, namespace, and ingress
 - `helm/examples/spendapp/`: old dummy example app for ingress testing
@@ -28,10 +29,10 @@ Recommended reading order:
 4. `access/` to publish the cluster through Cloudflare when behind CGNAT.
 5. `apps/gitea/` if you want self-hosted Git inside the cluster.
 6. `apps/registry/` if you want a local image registry for pushes and pod pulls.
-7. `apps/spend-app/` to deploy the real application.
-8. `apps/gitea/actions-*.yaml` if you want in-cluster Gitea Actions with BuildKit.
-9. `platform/argocd/` if you want Argo CD for GitOps-style reconciliation.
-10. `platform/monitoring/` if you want Prometheus and Grafana on the LAN.
+7. `apps/media/` if you want a simple LAN-only downloader stack.
+8. `apps/spend-app/` to deploy the real application.
+9. `apps/gitea/actions-*.yaml` if you want in-cluster Gitea Actions with BuildKit.
+10. `platform/argocd/` if you want Argo CD for GitOps-style reconciliation.
 
 These commands assume:
 
@@ -216,6 +217,44 @@ If you are not using `external-dns`, you can add local DNS records manually, for
 For long-term router use, prefer a stable service IP. Before first apply, you can set `spec.loadBalancerIP` in `helm/apps/pi-hole/pi-hole.yaml` to an unused address from the MetalLB pool.
 
 Pi-hole is also a better fit than AdGuard Home here because `external-dns` has a built-in Pi-hole provider.
+
+## Deploy A Media Downloader Stack
+
+The checked-in `helm/apps/media/` app provides a small LAN-only downloader stack:
+
+- `qBittorrent` at `qbittorrent.home.arpa`
+- `Prowlarr` at `prowlarr.home.arpa`
+- `Sonarr` at `sonarr.home.arpa`
+- `Radarr` at `radarr.home.arpa`
+
+It also mounts a shared host path at `/srv/media` on the single k3s node. The `media` app mounts it read-write, and `Jellyfin` mounts the same path at `/media` read-only so you can point Jellyfin libraries there after sync.
+
+Apply the manifests:
+
+```bash
+kubectl apply -k helm/apps/media
+kubectl rollout status deployment/qbittorrent -n media
+kubectl rollout status deployment/prowlarr -n media
+kubectl rollout status deployment/sonarr -n media
+kubectl rollout status deployment/radarr -n media
+```
+
+Then verify the LAN routes:
+
+```bash
+kubectl get ingress -n media
+kubectl get pvc -n jellyfin
+```
+
+Notes:
+
+- `qBittorrent` exposes the Web UI on `qbittorrent.home.arpa` and the BitTorrent port on `6881/TCP` and `6881/UDP` inside the cluster.
+- `Prowlarr` is the indexer manager. Point `Sonarr` and `Radarr` at it instead of configuring indexers repeatedly.
+- `Sonarr` should use `/media/tv` for series and `Radarr` should use `/media/movies` for films.
+- Use the same qBittorrent download root in all apps so import paths stay consistent, for example `/media/downloads`.
+- The images are `linuxserver` multi-arch images and should work on this arm64 node.
+- Downloads land on the k3s node under `/srv/media`, so keep that path backed by storage with enough space.
+- This setup is LAN-only. If you later want remote access, route it explicitly rather than exposing it publicly by default.
 
 ## Deploy ExternalDNS For Automatic Pi-hole Records
 
