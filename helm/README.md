@@ -557,6 +557,20 @@ Second example included for the application stack:
 
 `helm/platform/monitoring/app/grafana-dashboard-spend-app-overview.yaml`
 
+If you want to disable the heavy monitoring pieces on this single-node cluster, set `grafana.enabled: false` and `prometheus.enabled: false` in `helm/platform/monitoring/values.yaml` and let Argo CD prune them.
+
+## Deploy Jellyfin
+
+Use this when you want a lightweight self-hosted movie server on the LAN.
+
+The checked-in app exposes Jellyfin at:
+
+```text
+http://jellyfin.home.arpa
+```
+
+The app stores its config in a PVC named `jellyfin-config`. Media libraries are not mounted yet; add host-path, NFS, or another PVC-backed media volume before using it as a real library server.
+
 ## Deploy Gitea
 
 Use this when you want a lightweight self-hosted Git service on the LAN that can work with your in-cluster registry and future CI.

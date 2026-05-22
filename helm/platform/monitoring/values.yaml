@@ -14,7 +14,7 @@ kubeScheduler:
   enabled: false
 
 grafana:
-  enabled: true
+  enabled: false
   admin:
     existingSecret: monitoring-grafana-admin
     userKey: admin-user
@@ -46,6 +46,7 @@ grafana:
       memory: 512Mi
 
 prometheus:
+  enabled: false
   ingress:
     enabled: true
     ingressClassName: nginx
