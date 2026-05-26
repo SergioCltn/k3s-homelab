@@ -1,5 +1,5 @@
-- name: Install k3s server
-  hosts: k3s
+- name: Install k3s servers
+  hosts: k3s_servers
   gather_facts: true
   become: true
   vars_files:
@@ -15,6 +15,7 @@
         update_cache: true
         upgrade: dist
         autoremove: true
+        lock_timeout: 600
       when: k3s_update_system | bool
 
     - name: Check whether k3s is already installed
@@ -45,7 +46,7 @@
       register: k3s_registries
 
     - name: Install k3s
-      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL={{ k3s_channel | quote }} INSTALL_K3S_EXEC={{ k3s_install_exec | quote }} sh -
+      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL={{ k3s_channel | quote }} INSTALL_K3S_EXEC='server' sh -
       args:
         executable: /bin/bash
       when: not k3s_binary.stat.exists
@@ -76,6 +77,7 @@
       slurp:
         src: /etc/rancher/k3s/k3s.yaml
       register: remote_kubeconfig
+      when: inventory_hostname == k3s_primary_server
 
     - name: Ensure local kubeconfig directory exists
       become: false
@@ -84,6 +86,7 @@
         path: "{{ k3s_kubeconfig_dir }}"
         state: directory
         mode: "0700"
+      when: inventory_hostname == k3s_primary_server
 
     - name: Write local kubeconfig
       become: false
@@ -94,9 +97,110 @@
         content: >-
           {{ (remote_kubeconfig.content | b64decode)
              | replace('127.0.0.1', ansible_host | default(ansible_facts['default_ipv4']['address'])) }}
+      when: inventory_hostname == k3s_primary_server
 
     - name: Show kubeconfig path
       become: false
       delegate_to: localhost
       debug:
         msg: "Kubeconfig written to {{ k3s_kubeconfig_dir }}/{{ k3s_kubeconfig_name }}"
+      when: inventory_hostname == k3s_primary_server
+
+    - name: Read server node token
+      slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: server_node_token
+      when: inventory_hostname == k3s_primary_server
+
+    - name: Share server node token for agent joins
+      set_fact:
+        k3s_cluster_token: "{{ server_node_token.content | b64decode | trim }}"
+      delegate_to: localhost
+      delegate_facts: true
+      when: inventory_hostname == k3s_primary_server
+
+- name: Install k3s agents
+  hosts: k3s_agents
+  gather_facts: true
+  become: true
+  vars_files:
+    - ../group_vars/k3s.yml
+  vars:
+    k3s_agent_join_config: >-
+      {{
+        k3s_agent_config
+        | combine({
+            'server': k3s_server_url,
+            'token': hostvars['localhost']['k3s_cluster_token']
+          }, recursive=True)
+      }}
+
+  pre_tasks:
+    - name: Ensure server join token is available
+      assert:
+        that:
+          - hostvars['localhost']['k3s_cluster_token'] is defined
+          - hostvars['localhost']['k3s_cluster_token'] | length > 0
+        fail_msg: >-
+          Missing cluster join token. Run the server install tasks first and ensure
+          {{ k3s_primary_server }} is reachable.
+
+  tasks:
+    - name: Check passwordless sudo
+      command: sudo -n true
+      changed_when: false
+
+    - name: Update apt cache and upgrade system packages
+      apt:
+        update_cache: true
+        upgrade: dist
+        autoremove: true
+        lock_timeout: 600
+      when: k3s_update_system | bool
+
+    - name: Check whether k3s agent is already installed
+      stat:
+        path: /usr/local/bin/k3s-agent
+      register: k3s_agent_binary
+
+    - name: Ensure k3s config directory exists
+      file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: "0755"
+
+    - name: Write managed k3s agent config
+      copy:
+        dest: /etc/rancher/k3s/config.yaml
+        mode: "0600"
+        content: |
+          {{ k3s_agent_join_config | to_nice_yaml(indent=2) }}
+      register: k3s_agent_config_file
+
+    - name: Write managed k3s registries config
+      copy:
+        dest: /etc/rancher/k3s/registries.yaml
+        mode: "0600"
+        content: |
+          {{ k3s_registries_config | to_nice_yaml(indent=2) }}
+      register: k3s_agent_registries
+
+    - name: Install k3s agent
+      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL={{ k3s_channel | quote }} INSTALL_K3S_EXEC='agent' sh -
+      args:
+        executable: /bin/bash
+      when: not k3s_agent_binary.stat.exists
+
+    - name: Restart k3s-agent when config changes
+      systemd:
+        name: k3s-agent
+        state: restarted
+      when:
+        - k3s_agent_binary.stat.exists
+        - k3s_agent_config_file.changed or k3s_agent_registries.changed
+
+    - name: Ensure k3s-agent service is enabled and started
+      systemd:
+        name: k3s-agent
+        enabled: true
+        state: started

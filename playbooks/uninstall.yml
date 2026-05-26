@@ -1,5 +1,32 @@
-- name: Uninstall k3s server
-  hosts: k3s
+- name: Uninstall k3s agents
+  hosts: k3s_agents
+  gather_facts: false
+  become: true
+  vars_files:
+    - ../group_vars/k3s.yml
+
+  tasks:
+    - name: Check whether k3s agent uninstall script exists
+      stat:
+        path: /usr/local/bin/k3s-agent-uninstall.sh
+      register: k3s_agent_uninstall
+
+    - name: Run k3s agent uninstall script
+      command: /usr/local/bin/k3s-agent-uninstall.sh
+      when: k3s_agent_uninstall.stat.exists
+
+    - name: Verify agent service is removed
+      command: systemctl status k3s-agent
+      register: k3s_agent_status
+      changed_when: false
+      failed_when: false
+
+    - name: Show uninstall result
+      debug:
+        msg: "k3s-agent.service status rc={{ k3s_agent_status.rc }}"
+
+- name: Uninstall k3s servers
+  hosts: k3s_servers
   gather_facts: false
   become: true
   vars_files:

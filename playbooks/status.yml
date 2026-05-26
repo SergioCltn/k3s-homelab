@@ -7,7 +7,7 @@
 
   tasks:
     - name: Check service state
-      command: systemctl is-active k3s
+      command: systemctl is-active {{ 'k3s' if inventory_hostname in groups['k3s_servers'] else 'k3s-agent' }}
       register: k3s_service
       changed_when: false
       failed_when: false
@@ -23,17 +23,20 @@
       register: k3s_nodes
       changed_when: false
       failed_when: false
+      when: inventory_hostname == k3s_primary_server
 
     - name: Get cluster pods
       command: k3s kubectl get pods -A
       register: k3s_pods
       changed_when: false
       failed_when: false
+      when: inventory_hostname == k3s_primary_server
 
     - name: Print status
       debug:
         msg:
+          - "role: {{ 'server' if inventory_hostname in groups['k3s_servers'] else 'agent' }}"
           - "service: {{ k3s_service.stdout | default('missing') }}"
           - "version: {{ k3s_version.stdout | default('missing') }}"
-          - "nodes:\n{{ k3s_nodes.stdout | default('unavailable') }}"
-          - "pods:\n{{ k3s_pods.stdout | default('unavailable') }}"
+          - "nodes:\n{{ k3s_nodes.stdout | default('not queried on this host') }}"
+          - "pods:\n{{ k3s_pods.stdout | default('not queried on this host') }}"
