@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: trading-bot-postgres
+  namespace: trading-bot
+spec:
+  selector:
+    app: trading-bot-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trading-bot-postgres
+  namespace: trading-bot
+spec:
+  serviceName: trading-bot-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trading-bot-postgres
+  template:
+    metadata:
+      labels:
+        app: trading-bot-postgres
+    spec:
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: trading-bot-postgres
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - trading_bot
+                - -d
+                - trading_bot
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi

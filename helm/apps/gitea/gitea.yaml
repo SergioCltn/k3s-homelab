@@ -91,6 +91,7 @@ metadata:
   namespace: gitea
   annotations:
     external-dns.alpha.kubernetes.io/hostname: git.home.arpa
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
 spec:
   ingressClassName: nginx
   rules:

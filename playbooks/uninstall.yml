@@ -15,6 +15,16 @@
       command: /usr/local/bin/k3s-agent-uninstall.sh
       when: k3s_agent_uninstall.stat.exists
 
+    - name: Remove agent node from cluster
+      command: >-
+        k3s kubectl delete node
+        {{ k3s_node_name | default(inventory_hostname) }}
+        --ignore-not-found
+      delegate_to: "{{ k3s_primary_server }}"
+      register: k3s_delete_agent_node
+      changed_when: "'deleted' in k3s_delete_agent_node.stdout"
+      failed_when: false
+
     - name: Verify agent service is removed
       command: systemctl status k3s-agent
       register: k3s_agent_status

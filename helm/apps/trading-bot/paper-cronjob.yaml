@@ -1,0 +1,87 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trading-bot-paper
+  namespace: trading-bot
+spec:
+  # Run shortly after each 4h candle close in UTC.
+  schedule: "10 */4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 10
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: trading-bot-paper
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+          containers:
+            - name: paper
+              image: 192.168.1.243:5000/trading-bot:latest
+              imagePullPolicy: Always
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: trading-bot-postgres
+                      key: DATABASE_URL
+              args:
+                - paper-portfolio
+                - --state-store
+                - postgres
+                - --database-url
+                - $(DATABASE_URL)
+                - --exchange
+                - binance
+                - --market-symbol
+                - ADA/USDT
+                - --market-symbol
+                - AVAX/USDT
+                - --market-symbol
+                - BNB/USDT
+                - --market-symbol
+                - BTC/USDT
+                - --market-symbol
+                - DOGE/USDT
+                - --market-symbol
+                - ETH/USDT
+                - --market-symbol
+                - LINK/USDT
+                - --market-symbol
+                - SOL/USDT
+                - --market-symbol
+                - XRP/USDT
+                - --timeframe
+                - 4h
+                - --limit
+                - "300"
+                - --strategy
+                - donchian_trend
+                - --donchian-entry-lookback
+                - "15"
+                - --donchian-exit-lookback
+                - "10"
+                - --trend-ema-period
+                - "80"
+                - --atr-period
+                - "14"
+                - --atr-stop-multiplier
+                - "1.5"
+                - --allow-short
+                - --short-financing-pct
+                - "0.00005"
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
