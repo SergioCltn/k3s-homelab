@@ -52,7 +52,7 @@ metadata:
   name: qbittorrent
   namespace: media
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: qbittorrent
@@ -160,7 +160,7 @@ metadata:
   name: prowlarr
   namespace: media
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: prowlarr
@@ -246,7 +246,7 @@ metadata:
   name: sonarr
   namespace: media
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: sonarr
@@ -340,7 +340,7 @@ metadata:
   name: radarr
   namespace: media
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: radarr
