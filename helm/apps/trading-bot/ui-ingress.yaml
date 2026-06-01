@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: trading-bot-ui
+  namespace: trading-bot
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: trading-bot.home.arpa
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: trading-bot.home.arpa
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: trading-bot-ui
+                port:
+                  number: 8501
