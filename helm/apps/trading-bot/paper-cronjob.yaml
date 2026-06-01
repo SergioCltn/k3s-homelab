@@ -78,6 +78,12 @@ spec:
                 - --allow-short
                 - --short-financing-pct
                 - "0.00005"
+                - --risk-per-trade
+                - "0.02"
+                - --vol-target
+                - "0.015"
+                - --vol-lookback
+                - "30"
               resources:
                 requests:
                   cpu: 100m
