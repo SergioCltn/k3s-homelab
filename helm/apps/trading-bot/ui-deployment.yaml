@@ -35,7 +35,7 @@ spec:
         fsGroup: 10001
       containers:
         - name: ui
-          image: 192.168.1.243:5000/trading-bot:latest
+          image: 192.168.1.243:5000/trading-bot:8bf8f073cbfc4d621b689d3bdfb88deedb7fd6c7
           imagePullPolicy: Always
           command:
             - streamlit
