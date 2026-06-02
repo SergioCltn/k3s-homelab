@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: 192.168.1.243:5000/spend-app-backend:541668423f49f7d0fe1ac5934c406d1d0181b0eb
+          image: 192.168.1.243:5000/spend-app-backend:059e4d14f8603d8b48170ef77dd9fbbdc5994592
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
