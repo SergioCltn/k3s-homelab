@@ -4,6 +4,7 @@ resources:
   - namespace.yaml
   - postgres-secret.yaml
   - postgres-statefulset.yaml
+  - data-pvc.yaml
   - paper-cronjob.yaml
   - ui-deployment.yaml
   - ui-ingress.yaml

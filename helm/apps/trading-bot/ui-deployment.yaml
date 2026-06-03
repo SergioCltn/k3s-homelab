@@ -53,6 +53,11 @@ spec:
                   key: DATABASE_URL
             - name: PAPER_STARTING_CASH
               value: "10000"
+            - name: TRADING_BOT_DATA_DIR
+              value: /app/data
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
           ports:
             - name: http
               containerPort: 8501
@@ -69,3 +74,7 @@ spec:
             limits:
               cpu: 750m
               memory: 768Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: trading-bot-data
