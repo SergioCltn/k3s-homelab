@@ -84,6 +84,7 @@ spec:
                 - "0.015"
                 - --vol-lookback
                 - "30"
+                - --log-decisions
               resources:
                 requests:
                   cpu: 100m
