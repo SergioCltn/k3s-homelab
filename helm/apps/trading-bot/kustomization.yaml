@@ -5,6 +5,5 @@ resources:
   - namespace.yaml
   - trading-bot-env.sealedsecret.yaml
   - pvc.yaml
-  - warmup-job.yaml
   - cronjob-donchian.yaml
   - cronjob-tsmom.yaml
