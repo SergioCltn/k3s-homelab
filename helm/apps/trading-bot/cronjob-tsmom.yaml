@@ -1,0 +1,72 @@
+# TSMOM sleeve: daily candle closes at 00:00 UTC; run at 00:15 (staggered from
+# the Donchian 00:05 run to be polite to the exchange API). Most days the
+# decision is "holding period active"; the strategy rebalances every 5 days.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tsmom-testnet
+  labels:
+    app: trading-bot
+spec:
+  schedule: "15 0 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 6
+  failedJobsHistoryLimit: 6
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 540
+      template:
+        metadata:
+          labels:
+            app: trading-bot
+            sleeve: tsmom
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+          containers:
+            - name: bot
+              image: 192.168.1.243:5000/trading-bot:latest
+              imagePullPolicy: Always
+              args:
+                - live-testnet
+                - --exchange
+                - binance
+                - --symbol
+                - BTC/USDT
+                - --timeframe
+                - 1d
+                - --limit
+                - "400"
+                - --strategy
+                - tsmom
+                - --tsmom-lookback
+                - "28"
+                - --tsmom-hold
+                - "5"
+                - --paper-state
+                - selected-tsmom-1
+                - --candle-db
+                - /data/candles.sqlite3
+              envFrom:
+                - secretRef:
+                    name: trading-bot-env
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 192Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: tsmom-data

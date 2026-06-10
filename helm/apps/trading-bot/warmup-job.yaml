@@ -1,0 +1,57 @@
+# One-time candle backfill so the strategies have their warmup history
+# (Donchian needs 750 4h candles; live runs only fetch the latest 400 and
+# hydrate the rest from this cache). Public market data; no API keys needed.
+# Re-running it is harmless: candles upsert.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: warmup-fetch
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    app: trading-bot
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: trading-bot
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: warmup
+          image: 192.168.1.243:5000/trading-bot:latest
+          imagePullPolicy: Always
+          command: ["/bin/sh", "-c"]
+          args:
+            - >-
+              trading-bot fetch-candles --exchange binance --symbol BTC/USDT
+              --timeframe 4h --years 1 --candle-db /data-donchian/candles.sqlite3
+              &&
+              trading-bot fetch-candles --exchange binance --symbol BTC/USDT
+              --timeframe 1d --years 1 --candle-db /data-tsmom/candles.sqlite3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: donchian-data
+              mountPath: /data-donchian
+            - name: tsmom-data
+              mountPath: /data-tsmom
+      volumes:
+        - name: donchian-data
+          persistentVolumeClaim:
+            claimName: donchian-data
+        - name: tsmom-data
+          persistentVolumeClaim:
+            claimName: tsmom-data

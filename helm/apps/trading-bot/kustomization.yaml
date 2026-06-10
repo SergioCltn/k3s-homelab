@@ -1,10 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+namespace: trading-bot
 resources:
   - namespace.yaml
-  - postgres-secret.yaml
-  - postgres-statefulset.yaml
-  - data-pvc.yaml
-  - paper-cronjob.yaml
-  - ui-deployment.yaml
-  - ui-ingress.yaml
+  - trading-bot-env.sealedsecret.yaml
+  - pvc.yaml
+  - warmup-job.yaml
+  - cronjob-donchian.yaml
+  - cronjob-tsmom.yaml

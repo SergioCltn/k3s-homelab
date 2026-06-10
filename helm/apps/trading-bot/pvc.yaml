@@ -1,0 +1,22 @@
+# One PVC per sleeve: SQLite plus ReadWriteOnce means each sleeve gets its own
+# database file, so two CronJobs can never fight over file locks or node
+# scheduling. The candle cache duplication is a few MB.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: donchian-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tsmom-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
