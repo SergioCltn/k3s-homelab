@@ -31,7 +31,7 @@ spec:
             fsGroup: 1000
           containers:
             - name: bot
-              image: 192.168.1.243:5000/trading-bot:latest
+              image: 192.168.1.243:5000/trading-bot:38c2319ce081d5eb04d8756d6f6fd10e087dd6b5
               imagePullPolicy: Always
               args:
                 - live-testnet
