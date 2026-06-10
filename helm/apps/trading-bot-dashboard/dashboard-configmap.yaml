@@ -1,0 +1,254 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trading-bot-dashboard
+  namespace: trading-bot-dashboard
+data:
+  dashboard.py: |
+    from __future__ import annotations
+
+    import html
+    import json
+    import os
+    import ssl
+    import time
+    import urllib.error
+    import urllib.request
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from typing import Any
+
+    NAMESPACE = os.environ.get("WATCH_NAMESPACE", "trading-bot")
+    PORT = int(os.environ.get("PORT", "8080"))
+    TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    CA_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+
+    def service_url(path: str) -> str:
+        host = os.environ["KUBERNETES_SERVICE_HOST"]
+        port = os.environ["KUBERNETES_SERVICE_PORT"]
+        return f"https://{host}:{port}{path}"
+
+    def token() -> str:
+        with open(TOKEN_PATH, "r", encoding="utf-8") as handle:
+            return handle.read().strip()
+
+    def kube_get(path: str) -> dict[str, Any]:
+        context = ssl.create_default_context(cafile=CA_PATH)
+        request = urllib.request.Request(
+            service_url(path),
+            headers={"Authorization": f"Bearer {token()}", "Accept": "application/json"},
+        )
+        with urllib.request.urlopen(request, context=context, timeout=8) as response:
+            return json.loads(response.read().decode("utf-8"))
+
+    def kube_text(path: str) -> str:
+        context = ssl.create_default_context(cafile=CA_PATH)
+        request = urllib.request.Request(
+            service_url(path),
+            headers={"Authorization": f"Bearer {token()}"},
+        )
+        with urllib.request.urlopen(request, context=context, timeout=8) as response:
+            return response.read().decode("utf-8", errors="replace")
+
+    def get_items(path: str) -> list[dict[str, Any]]:
+        return kube_get(path).get("items", [])
+
+    def meta_name(item: dict[str, Any]) -> str:
+        return item.get("metadata", {}).get("name", "")
+
+    def timestamp(item: dict[str, Any], key: str = "creationTimestamp") -> str:
+        return item.get("metadata", {}).get(key, "")
+
+    def condition_status(item: dict[str, Any], condition_type: str) -> bool:
+        for condition in item.get("status", {}).get("conditions", []) or []:
+            if condition.get("type") == condition_type and condition.get("status") == "True":
+                return True
+        return False
+
+    def latest_jobs(jobs: list[dict[str, Any]], sleeve: str) -> list[dict[str, Any]]:
+        selected = []
+        for job in jobs:
+            labels = job.get("metadata", {}).get("labels", {}) or {}
+            name = meta_name(job)
+            if labels.get("sleeve") == sleeve or name.startswith(f"{sleeve}-"):
+                selected.append(job)
+        selected.sort(key=lambda item: timestamp(item), reverse=True)
+        return selected[:5]
+
+    def latest_pod_for_job(pods: list[dict[str, Any]], job_name: str) -> dict[str, Any] | None:
+        selected = []
+        for pod in pods:
+            labels = pod.get("metadata", {}).get("labels", {}) or {}
+            if labels.get("job-name") == job_name:
+                selected.append(pod)
+        selected.sort(key=lambda item: timestamp(item), reverse=True)
+        return selected[0] if selected else None
+
+    def job_state(job: dict[str, Any]) -> str:
+        status = job.get("status", {})
+        if condition_status(job, "Complete"):
+            return "Complete"
+        if condition_status(job, "Failed"):
+            return "Failed"
+        if status.get("active", 0) > 0:
+            return "Running"
+        return "Pending"
+
+    def pod_state(pod: dict[str, Any] | None) -> str:
+        if pod is None:
+            return "-"
+        return pod.get("status", {}).get("phase", "Unknown")
+
+    def html_escape(value: Any) -> str:
+        return html.escape(str(value), quote=True)
+
+    def render_table(headers: list[str], rows: list[list[Any]]) -> str:
+        head = "".join(f"<th>{html_escape(header)}</th>" for header in headers)
+        body = []
+        for row in rows:
+            body.append("<tr>" + "".join(f"<td>{html_escape(cell)}</td>" for cell in row) + "</tr>")
+        return f"<table><thead><tr>{head}</tr></thead><tbody>{''.join(body)}</tbody></table>"
+
+    def render_dashboard() -> str:
+        cronjobs = get_items(f"/apis/batch/v1/namespaces/{NAMESPACE}/cronjobs")
+        jobs = get_items(f"/apis/batch/v1/namespaces/{NAMESPACE}/jobs")
+        pods = get_items(f"/api/v1/namespaces/{NAMESPACE}/pods")
+        pvcs = get_items(f"/api/v1/namespaces/{NAMESPACE}/persistentvolumeclaims")
+        secrets = get_items(f"/api/v1/namespaces/{NAMESPACE}/secrets")
+        events = get_items(f"/api/v1/namespaces/{NAMESPACE}/events")
+
+        secret_names = {meta_name(secret) for secret in secrets}
+        cronjob_rows = []
+        for cronjob in sorted(cronjobs, key=meta_name):
+            spec = cronjob.get("spec", {})
+            status = cronjob.get("status", {})
+            cronjob_rows.append([
+                meta_name(cronjob),
+                spec.get("schedule", ""),
+                spec.get("timeZone", ""),
+                spec.get("suspend", False),
+                status.get("lastScheduleTime", "never"),
+                len(status.get("active", []) or []),
+            ])
+
+        pvc_rows = []
+        for pvc in sorted(pvcs, key=meta_name):
+            spec = pvc.get("spec", {})
+            status = pvc.get("status", {})
+            pvc_rows.append([
+                meta_name(pvc),
+                status.get("phase", ""),
+                status.get("capacity", {}).get("storage", ""),
+                ", ".join(status.get("accessModes", []) or spec.get("accessModes", []) or []),
+                spec.get("storageClassName", ""),
+            ])
+
+        job_rows = []
+        log_blocks = []
+        for sleeve in ["donchian", "tsmom"]:
+            sleeve_jobs = latest_jobs(jobs, sleeve)
+            if not sleeve_jobs:
+                job_rows.append([sleeve, "-", "No jobs yet", "-", "-"])
+                continue
+            for index, job in enumerate(sleeve_jobs):
+                pod = latest_pod_for_job(pods, meta_name(job))
+                job_rows.append([sleeve, meta_name(job), job_state(job), pod_state(pod), timestamp(job)])
+                if index == 0 and pod is not None:
+                    pod_name = meta_name(pod)
+                    try:
+                        logs = kube_text(f"/api/v1/namespaces/{NAMESPACE}/pods/{pod_name}/log?tailLines=80")
+                    except urllib.error.HTTPError as exc:
+                        logs = f"log unavailable: HTTP {exc.code}"
+                    except Exception as exc:
+                        logs = f"log unavailable: {type(exc).__name__}: {exc}"
+                    log_blocks.append(f"<h3>{html_escape(sleeve)} latest logs</h3><pre>{html_escape(logs)}</pre>")
+
+        events.sort(key=lambda item: item.get("lastTimestamp") or item.get("eventTime") or timestamp(item), reverse=True)
+        event_rows = []
+        for event in events[:12]:
+            involved = event.get("involvedObject", {})
+            event_rows.append([
+                event.get("lastTimestamp") or event.get("eventTime") or "",
+                event.get("type", ""),
+                event.get("reason", ""),
+                f"{involved.get('kind', '')}/{involved.get('name', '')}",
+                event.get("message", ""),
+            ])
+
+        secret_status = "present" if "trading-bot-env" in secret_names else "missing"
+        generated_at = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+        return f"""
+        <!doctype html>
+        <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta http-equiv="refresh" content="30">
+          <title>Trading Bot Dashboard</title>
+          <style>
+            :root {{ color-scheme: dark; --bg: #0b1020; --card: #121a30; --line: #283653; --text: #e8eefc; --muted: #99a8c7; --good: #75d483; --warn: #ffd166; }}
+            body {{ margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
+            main {{ max-width: 1180px; margin: 0 auto; padding: 28px; }}
+            h1 {{ margin: 0 0 6px; font-size: 34px; letter-spacing: -0.04em; }}
+            h2 {{ margin: 0 0 14px; font-size: 20px; }}
+            h3 {{ margin: 18px 0 8px; color: var(--muted); }}
+            .muted {{ color: var(--muted); }}
+            .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 22px 0; }}
+            .card {{ background: linear-gradient(180deg, #17213a, var(--card)); border: 1px solid var(--line); border-radius: 16px; padding: 16px; box-shadow: 0 18px 60px rgba(0,0,0,.24); }}
+            .metric {{ font-size: 26px; font-weight: 700; margin-top: 6px; }}
+            .good {{ color: var(--good); }}
+            .warn {{ color: var(--warn); }}
+            table {{ width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 12px; }}
+            th, td {{ border-bottom: 1px solid var(--line); padding: 9px 10px; text-align: left; vertical-align: top; font-size: 14px; }}
+            th {{ color: var(--muted); font-weight: 600; background: rgba(255,255,255,.03); }}
+            pre {{ white-space: pre-wrap; overflow: auto; background: #070b16; border: 1px solid var(--line); border-radius: 12px; padding: 14px; color: #d7e1ff; }}
+            section {{ margin: 18px 0; }}
+          </style>
+        </head>
+        <body>
+          <main>
+            <h1>Trading Bot Dashboard</h1>
+            <div class="muted">Read-only Kubernetes view for namespace {html_escape(NAMESPACE)}. Auto-refreshes every 30 seconds. Generated {html_escape(generated_at)}.</div>
+            <div class="grid">
+              <div class="card"><div class="muted">CronJobs</div><div class="metric">{len(cronjobs)}</div></div>
+              <div class="card"><div class="muted">Recent Jobs</div><div class="metric">{len(jobs)}</div></div>
+              <div class="card"><div class="muted">PVCs Bound</div><div class="metric">{sum(1 for pvc in pvcs if pvc.get('status', {}).get('phase') == 'Bound')}/{len(pvcs)}</div></div>
+              <div class="card"><div class="muted">Env Secret</div><div class="metric {'good' if secret_status == 'present' else 'warn'}">{html_escape(secret_status)}</div></div>
+            </div>
+            <section class="card"><h2>CronJobs</h2>{render_table(['Name', 'Schedule', 'TimeZone', 'Suspended', 'Last Schedule', 'Active'], cronjob_rows)}</section>
+            <section class="card"><h2>PVCs</h2>{render_table(['Name', 'Status', 'Capacity', 'Access Modes', 'StorageClass'], pvc_rows)}</section>
+            <section class="card"><h2>Recent Jobs</h2>{render_table(['Sleeve', 'Job', 'State', 'Pod', 'Created'], job_rows)}</section>
+            <section class="card"><h2>Latest Events</h2>{render_table(['Time', 'Type', 'Reason', 'Object', 'Message'], event_rows)}</section>
+            <section class="card"><h2>Logs</h2>{''.join(log_blocks) if log_blocks else '<div class="muted">No job logs yet.</div>'}</section>
+          </main>
+        </body>
+        </html>
+        """
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            if self.path == "/healthz":
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"ok")
+                return
+            if self.path not in ["/", ""]:
+                self.send_response(404)
+                self.end_headers()
+                return
+            try:
+                body = render_dashboard().encode("utf-8")
+                self.send_response(200)
+            except Exception as exc:
+                body = f"dashboard error: {type(exc).__name__}: {exc}".encode("utf-8")
+                self.send_response(500)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, format: str, *args: Any) -> None:
+            return
+
+    if __name__ == "__main__":
+        server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+        server.serve_forever()
