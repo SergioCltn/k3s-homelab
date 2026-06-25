@@ -11,6 +11,7 @@ spec:
     path: helm/platform/argocd/apps
     directory:
       recurse: true
+      exclude: trading-bot-dashboard.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
