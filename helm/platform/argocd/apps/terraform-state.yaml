@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: terraform-state
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: http://gitea.gitea.svc.cluster.local:3000/sergiocltn/k3s.git
+    targetRevision: main
+    path: helm/platform/terraform-state/app
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: terraform-state
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
