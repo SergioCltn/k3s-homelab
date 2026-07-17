@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  # Secrets are created directly in-cluster with kubectl from the checked-in
+  # *.secret.yaml.example files; do not commit plaintext Secret manifests.
+  - postgres.yaml
+  - postgres-backup.yaml
+  - backend.yaml
+  - frontend.yaml
+  - ingress.yaml

@@ -1,0 +1,41 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portfolio-tax-app
+  namespace: portfolio-tax-app
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: portfolio.home.arpa
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: portfolio.home.arpa
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: portfolio-tax-app-backend
+                port:
+                  number: 8080
+          - path: /healthz
+            pathType: Prefix
+            backend:
+              service:
+                name: portfolio-tax-app-backend
+                port:
+                  number: 8080
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: portfolio-tax-app-backend
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: portfolio-tax-app-frontend
+                port:
+                  number: 3000

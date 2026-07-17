@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: portfolio-tax-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: http://gitea.gitea.svc.cluster.local:3000/sergiocltn/k3s.git
+    targetRevision: main
+    path: helm/apps/portfolio-tax-app
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: portfolio-tax-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
