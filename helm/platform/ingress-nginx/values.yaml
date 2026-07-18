@@ -10,3 +10,9 @@ controller:
   service:
     type: LoadBalancer
     externalTrafficPolicy: Local
+    ports:
+      ssh: 22
+    targetPorts:
+      ssh: 22
+tcp:
+  22: "gitea/gitea:2222"
