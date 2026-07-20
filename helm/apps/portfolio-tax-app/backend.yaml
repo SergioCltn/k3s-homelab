@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: 192.168.1.243:5000/portfolio-tax-app-backend:a63e92d1b22bc2e06a957f68efae17b7aaf619d4
+          image: 192.168.1.243:5000/portfolio-tax-app-backend:b2b22f775e202b54c1fbca13842f7eedab2c1994
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
