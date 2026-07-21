@@ -718,6 +718,55 @@ kubectl get deployments -n gitea
 
 The backend is a Go API that expects PostgreSQL and runs schema migrations on startup.
 
+## Deploy Shared PostgreSQL
+
+Use this when you want one PostgreSQL server for multiple small apps instead of one Postgres pod per app. The shared server should use separate databases and users per app; do not mix unrelated app tables in one database.
+
+Create the admin secret from the example before syncing the Argo CD app:
+
+```bash
+cp helm/apps/database/database-admin.secret.yaml.example helm/apps/database/database-admin.secret.yaml
+$EDITOR helm/apps/database/database-admin.secret.yaml
+kubectl apply -f helm/apps/database/database-admin.secret.yaml
+```
+
+The plain `database-admin.secret.yaml` file is ignored by Git. If you want Argo CD to manage this secret later, seal it with `kubeseal` and commit only the resulting `SealedSecret`.
+
+The checked-in Argo CD app deploys:
+
+- namespace: `database`
+- service: `postgres.database.svc.cluster.local:5432`
+- data PVC: `postgres-data`
+- daily full-cluster dump: `postgres-backup` at `03:30`
+- backup PVC: `postgres-backups`
+
+After the app syncs, verify it:
+
+```bash
+kubectl get pods,pvc,cronjob -n database
+kubectl rollout status deployment/postgres -n database
+```
+
+Migration should be one app at a time:
+
+1. Create a dedicated app database and user on `postgres.database.svc.cluster.local`.
+2. Dump the old per-app database.
+3. Restore it into the shared database server.
+4. Update that app's backend secret to use the shared database host.
+5. Restart the backend and verify the app.
+6. Disable the old per-app Postgres deployment only after the app is confirmed healthy.
+7. Keep the old per-app PVC for a while as rollback data; do not delete it during the first migration.
+
+Example app-level layout inside the shared server:
+
+```text
+database: spend_app
+user: spend_app
+
+database: portfolio_tax_app
+user: portfolio_tax_app
+```
+
 Create the namespace first:
 
 ```bash
