@@ -52,10 +52,12 @@ Check status:
 ansible-playbook -i inventory/hosts.yml playbooks/status.yml
 ```
 
-Uninstall the cluster:
+Uninstall the cluster. This is guarded and requires explicit confirmation for the target host:
 
 ```bash
-ansible-playbook -i inventory/hosts.yml playbooks/uninstall.yml
+ansible-playbook -i inventory/hosts.yml playbooks/uninstall.yml \
+  -e confirm_uninstall=true \
+  -e confirm_target=aetherion
 ```
 
 Use the fetched kubeconfig locally:

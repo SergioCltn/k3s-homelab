@@ -5,6 +5,16 @@
   vars_files:
     - ../group_vars/k3s.yml
 
+  pre_tasks:
+    - name: Refuse agent uninstall unless explicitly confirmed
+      ansible.builtin.assert:
+        that:
+          - confirm_uninstall | default(false) | bool
+          - confirm_target | default('') == inventory_hostname
+        fail_msg: >-
+          Refusing to uninstall k3s agent on {{ inventory_hostname }}. Re-run with
+          -e confirm_uninstall=true -e confirm_target={{ inventory_hostname }}
+
   tasks:
     - name: Check whether k3s agent uninstall script exists
       stat:
@@ -41,6 +51,16 @@
   become: true
   vars_files:
     - ../group_vars/k3s.yml
+
+  pre_tasks:
+    - name: Refuse server uninstall unless explicitly confirmed
+      ansible.builtin.assert:
+        that:
+          - confirm_uninstall | default(false) | bool
+          - confirm_target | default('') == inventory_hostname
+        fail_msg: >-
+          Refusing to uninstall k3s server on {{ inventory_hostname }}. Re-run with
+          -e confirm_uninstall=true -e confirm_target={{ inventory_hostname }}
 
   tasks:
     - name: Check whether uninstall script exists
