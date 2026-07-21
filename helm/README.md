@@ -445,7 +445,6 @@ The root app watches:
 
 The checked-in child apps currently include:
 
-- `argocd`
 - `spend-app`
 - `gitea`
 - `registry`
@@ -453,13 +452,7 @@ The checked-in child apps currently include:
 - `external-dns`
 - `sealed-secrets`
 
-The checked-in `argocd` child app pins the currently installed chart version and combines:
-
-- the upstream `argo-cd` Helm chart
-- `helm/platform/argocd/values.yaml`
-- `helm/platform/argocd/app/argocd-server-ingress.yaml`
-
-That lets the bootstrap install hand off to Argo CD without rotating the existing admin secret.
+Argo CD itself is intentionally not tracked by Argo CD. Manage its Helm release with the install command above and keep only the LAN ingress manifest in `helm/platform/argocd/app/` for manual apply.
 
 The root app enables prune for child `Application` objects. Future child applications can be added by dropping more `Application` manifests into `helm/platform/argocd/apps/`, and removed files are deleted from Argo CD automatically.
 
