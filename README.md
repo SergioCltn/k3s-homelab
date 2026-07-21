@@ -60,6 +60,11 @@ ansible-playbook -i inventory/hosts.yml playbooks/uninstall.yml \
   -e confirm_target=aetherion
 ```
 
+When uninstalling agents, the playbook also removes each agent's Kubernetes
+Node object from the primary server. If an agent's Kubernetes node name differs
+from its inventory hostname, set `k3s_node_name` for that host in the
+inventory.
+
 Use the fetched kubeconfig locally:
 
 ```bash
@@ -76,6 +81,7 @@ Layout:
 - `helm/access/`: public access and Cloudflare-related manifests
 - `helm/apps/pi-hole/`: local DNS service for LAN hostname rewrites
 - `helm/apps/gitea/`: self-hosted Git service resources
+- `helm/apps/proxmox/`: LAN-only Proxmox reverse-proxy ingress
 - `helm/apps/registry/`: in-cluster Docker registry resources
 - `helm/apps/spend-app/`: real application resources
 - `helm/examples/spendapp/`: old dummy example app used for ingress validation
@@ -103,6 +109,8 @@ Important files:
 - `helm/apps/gitea/actions-runner-token.secret.yaml.example`
 - `helm/apps/gitea/actions-runner.yaml`
 - `helm/apps/gitea/actions-buildkit.yaml`
+- `helm/apps/proxmox/kustomization.yaml`
+- `helm/apps/proxmox/proxmox.yaml`
 - `helm/apps/registry/namespace.yaml`
 - `helm/apps/registry/registry.yaml`
 - `helm/apps/spend-app/namespace.yaml`
@@ -122,6 +130,7 @@ These install:
 - `Sealed Secrets` for Git-safe encrypted Kubernetes secrets
 - `Prometheus` and `Grafana` for cluster monitoring on the LAN
 - `Gitea` for local Git hosting on the LAN
+- Proxmox UI reverse proxy at `proxmox.home.arpa`
 - in-cluster Gitea Actions runner with BuildKit-based image builds
 - in-cluster Docker registry for local image pushes and pod pulls
 - `spend-app` backend and PostgreSQL manifests
@@ -135,6 +144,7 @@ Current public routing:
 Current LAN-only hostname:
 
 - `http://spendapp.home.arpa` -> Pi-hole DNS record -> `ingress-nginx` -> `spend-app-backend`
+- `https://proxmox.home.arpa` -> Pi-hole DNS record -> `ingress-nginx` -> `192.168.1.45:8006`
 
 Use the commands in `helm/README.md` to install and verify them.
 
