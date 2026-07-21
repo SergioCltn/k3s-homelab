@@ -19,3 +19,8 @@ k3s_registries_config:
 k3s_update_system: true
 k3s_kubeconfig_dir: "{{ playbook_dir }}/../kubeconfig"
 k3s_kubeconfig_name: aetherion.yaml
+
+tailscale_advertise_routes:
+  - 192.168.1.0/24
+tailscale_accept_dns: false
+tailscale_ssh: true

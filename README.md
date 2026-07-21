@@ -14,6 +14,7 @@ Default target:
 - `group_vars/k3s.yml`: cluster settings
 - `playbooks/install.yml`: install `k3s` and fetch kubeconfig
 - `playbooks/status.yml`: inspect cluster state
+- `playbooks/tailscale.yml`: install Tailscale as a LAN subnet router
 - `playbooks/uninstall.yml`: remove `k3s`
 
 ## Requirements
@@ -50,6 +51,28 @@ Check status:
 
 ```bash
 ansible-playbook -i inventory/hosts.yml playbooks/status.yml
+```
+
+Install Tailscale on the server and advertise the LAN subnet:
+
+```bash
+ansible-playbook -i inventory/hosts.yml playbooks/tailscale.yml \
+  -e tailscale_auth_key=tskey-auth-REPLACE_ME
+```
+
+Create the auth key in the Tailscale admin console. Use an ephemeral or reusable auth key with an appropriate expiry for this one host, and do not commit it to Git.
+
+After the playbook runs, approve the advertised route in the Tailscale admin console:
+
+```text
+192.168.1.0/24
+```
+
+Then connect your laptop or phone to Tailscale and test LAN services through the VPN:
+
+```bash
+curl -I http://pi-hole.home.arpa/admin/
+curl -I http://git.home.arpa
 ```
 
 Uninstall the cluster. This is guarded and requires explicit confirmation for the target host:
@@ -159,3 +182,15 @@ Use the commands in `helm/README.md` to install and verify them.
 - Reads `/etc/rancher/k3s/k3s.yaml`
 - Rewrites `127.0.0.1` to the host IP
 - Writes the kubeconfig into `./kubeconfig/`
+
+## Tailscale Subnet Router
+
+The Tailscale playbook is intentionally separate from `playbooks/install.yml`. Running it does not reinstall or restart k3s.
+
+Default Tailscale settings live in `group_vars/k3s.yml`:
+
+- `tailscale_advertise_routes`: `192.168.1.0/24`
+- `tailscale_accept_dns`: `false`
+- `tailscale_ssh`: `true`
+
+Keep `tailscale_accept_dns: false` unless you explicitly want Tailscale to change the server's DNS resolver. For remote clients, configure DNS in the Tailscale admin console if you want `*.home.arpa` names to resolve through Pi-hole while away from home.
