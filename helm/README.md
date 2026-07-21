@@ -714,9 +714,9 @@ kubectl logs -n gitea deploy/gitea-buildkit --tail=100
 kubectl get deployments -n gitea
 ```
 
-## Deploy Spend App Backend And Database
+## Deploy Spend App Backend
 
-The backend is a Go API that expects PostgreSQL and runs schema migrations on startup.
+The backend is a Go API that expects PostgreSQL and runs schema migrations on startup. It now uses the shared PostgreSQL service at `postgres.database.svc.cluster.local:5432`.
 
 ## Deploy Shared PostgreSQL
 
@@ -761,10 +761,10 @@ Example app-level layout inside the shared server:
 
 ```text
 database: spend_app
-user: spend_app
+user: spend_user
 
-database: portfolio_tax_app
-user: portfolio_tax_app
+database: portfolio
+user: portfolio
 ```
 
 Create the namespace first:
@@ -773,55 +773,17 @@ Create the namespace first:
 kubectl apply -f helm/apps/spend-app/namespace.yaml
 ```
 
-The checked-in `spend-app` secrets are cluster-specific Sealed Secrets.
+The checked-in `spend-app` backend secret is a cluster-specific Sealed Secret.
 
-If you need to rotate them, regenerate plain Secrets locally from the examples and reseal them:
+If you need to rotate it, regenerate the plain Secret locally from the example and reseal it:
 
 ```bash
-cp helm/apps/spend-app/postgres.secret.yaml.example helm/apps/spend-app/postgres.secret.yaml
 cp helm/apps/spend-app/backend.secret.yaml.example helm/apps/spend-app/backend.secret.yaml
-$EDITOR helm/apps/spend-app/postgres.secret.yaml
 $EDITOR helm/apps/spend-app/backend.secret.yaml
-kubeseal --controller-name sealed-secrets-controller --controller-namespace sealed-secrets --format yaml < helm/apps/spend-app/postgres.secret.yaml > helm/apps/spend-app/spend-app-postgres.sealedsecret.yaml
 kubeseal --controller-name sealed-secrets-controller --controller-namespace sealed-secrets --format yaml < helm/apps/spend-app/backend.secret.yaml > helm/apps/spend-app/spend-app-backend.sealedsecret.yaml
 ```
 
-The password embedded in `DATABASE_URL` must match `POSTGRES_PASSWORD` from the local plain Secret you use to regenerate `helm/apps/spend-app/spend-app-postgres.sealedsecret.yaml`.
-
-Apply the database resources:
-
-```bash
-kubectl apply -f helm/apps/spend-app/postgres.yaml
-kubectl rollout status deployment/spend-app-postgres -n spend-app
-```
-
-Optional backup job:
-
-```bash
-kubectl apply -f helm/apps/spend-app/postgres-backup.yaml
-kubectl get cronjob -n spend-app spend-app-postgres-backup
-```
-
-This creates:
-
-- a backup PVC: `spend-app-postgres-backups`
-- a daily `pg_dump` CronJob at `03:00`
-- gzip-compressed dumps under `/backups`
-- automatic cleanup for backup files older than 7 days
-
-To trigger one backup immediately:
-
-```bash
-kubectl create job --from=cronjob/spend-app-postgres-backup spend-app-postgres-backup-manual -n spend-app
-kubectl logs -n spend-app job/spend-app-postgres-backup-manual
-```
-
-To inspect backup job history:
-
-```bash
-kubectl get cronjob -n spend-app spend-app-postgres-backup
-kubectl get jobs -n spend-app
-```
+The password embedded in `DATABASE_URL` must match the `spend_user` password in the shared PostgreSQL server.
 
 The checked-in backend manifest now uses `spend-app-backend:cluster` because the currently deployed backend image was imported directly into the k3s node's containerd.
 

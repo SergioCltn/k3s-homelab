@@ -181,14 +181,14 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "max(kube_pod_container_status_ready{namespace=\"spend-app\",pod=~\"spend-app-postgres-.*\",container=\"postgres\"})",
+              "expr": "max(kube_pod_container_status_ready{namespace=\"database\",pod=~\"postgres-.*\",container=\"postgres\"})",
               "instant": true,
               "legendFormat": "",
               "range": false,
               "refId": "A"
             }
           ],
-          "title": "Postgres Ready",
+          "title": "Shared Postgres Ready",
           "type": "stat"
         },
         {
@@ -317,14 +317,14 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "max(100 - ((kubelet_volume_stats_available_bytes{namespace=\"spend-app\",persistentvolumeclaim=\"spend-app-postgres-data\"} * 100) / kubelet_volume_stats_capacity_bytes{namespace=\"spend-app\",persistentvolumeclaim=\"spend-app-postgres-data\"}))",
+              "expr": "max(100 - ((kubelet_volume_stats_available_bytes{namespace=\"database\",persistentvolumeclaim=\"postgres-data\"} * 100) / kubelet_volume_stats_capacity_bytes{namespace=\"database\",persistentvolumeclaim=\"postgres-data\"}))",
               "instant": true,
               "legendFormat": "",
               "range": false,
               "refId": "A"
             }
           ],
-          "title": "Postgres PVC Usage",
+          "title": "Shared Postgres PVC Usage",
           "type": "stat"
         },
         {
@@ -409,7 +409,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"spend-app\",container!~\"POD|\",pod=~\"spend-app-backend-.*|spend-app-postgres-.*\"}[5m]))",
+              "expr": "sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{namespace=~\"spend-app|database\",container!~\"POD|\",pod=~\"spend-app-backend-.*|postgres-.*\"}[5m]))",
               "legendFormat": "{{pod}}",
               "range": true,
               "refId": "A"
@@ -500,7 +500,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"spend-app\",container!~\"POD|\",pod=~\"spend-app-backend-.*|spend-app-postgres-.*\"})",
+              "expr": "sum by (namespace, pod) (container_memory_working_set_bytes{namespace=~\"spend-app|database\",container!~\"POD|\",pod=~\"spend-app-backend-.*|postgres-.*\"})",
               "legendFormat": "{{pod}}",
               "range": true,
               "refId": "A"
@@ -591,7 +591,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "sum by (pod) (rate(container_network_receive_bytes_total{namespace=\"spend-app\",pod=~\"spend-app-backend-.*|spend-app-postgres-.*\"}[5m]) + rate(container_network_transmit_bytes_total{namespace=\"spend-app\",pod=~\"spend-app-backend-.*|spend-app-postgres-.*\"}[5m]))",
+              "expr": "sum by (namespace, pod) (rate(container_network_receive_bytes_total{namespace=~\"spend-app|database\",pod=~\"spend-app-backend-.*|postgres-.*\"}[5m]) + rate(container_network_transmit_bytes_total{namespace=~\"spend-app|database\",pod=~\"spend-app-backend-.*|postgres-.*\"}[5m]))",
               "legendFormat": "{{pod}}",
               "range": true,
               "refId": "A"
