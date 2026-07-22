@@ -1,0 +1,19 @@
+- name: Disable Tailscale without uninstalling it
+  hosts: k3s_servers
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Check passwordless sudo
+      command: sudo -n true
+      changed_when: false
+
+    - name: Stop and disable tailscaled
+      systemd:
+        name: tailscaled
+        enabled: false
+        state: stopped
+
+    - name: Show disabled status
+      debug:
+        msg: "Tailscale is stopped on {{ inventory_hostname }}. The node remains registered and can be re-enabled without a new auth key."

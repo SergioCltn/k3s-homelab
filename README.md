@@ -15,6 +15,8 @@ Default target:
 - `playbooks/install.yml`: install `k3s` and fetch kubeconfig
 - `playbooks/status.yml`: inspect cluster state
 - `playbooks/tailscale.yml`: install Tailscale as a LAN subnet router
+- `playbooks/tailscale-disable.yml`: stop Tailscale without uninstalling it
+- `playbooks/tailscale-enable.yml`: start an already-authenticated Tailscale node
 - `playbooks/uninstall.yml`: remove `k3s`
 
 ## Requirements
@@ -73,6 +75,18 @@ Then connect your laptop or phone to Tailscale and test LAN services through the
 ```bash
 curl -I http://pi-hole.home.arpa/admin/
 curl -I http://git.home.arpa
+```
+
+Temporarily disable Tailscale on the server:
+
+```bash
+ansible-playbook -i inventory/hosts.yml playbooks/tailscale-disable.yml
+```
+
+Enable it again later without a new auth key:
+
+```bash
+ansible-playbook -i inventory/hosts.yml playbooks/tailscale-enable.yml
 ```
 
 Uninstall the cluster. This is guarded and requires explicit confirmation for the target host:
@@ -186,6 +200,8 @@ Use the commands in `helm/README.md` to install and verify them.
 ## Tailscale Subnet Router
 
 The Tailscale playbook is intentionally separate from `playbooks/install.yml`. Running it does not reinstall or restart k3s.
+
+Use `playbooks/tailscale-disable.yml` when you want to temporarily close VPN access while keeping the machine registered in your tailnet. Use `playbooks/tailscale-enable.yml` to start it again. To fully remove the node from Tailscale, delete it from the Tailscale admin console and uninstall the package manually on the server.
 
 Default Tailscale settings live in `group_vars/k3s.yml`:
 
