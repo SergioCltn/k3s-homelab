@@ -17,7 +17,7 @@ help:
 	@printf '%s\n' '  make tailscale-enable        Enable existing Tailscale node'
 	@printf '%s\n' '  make tailscale-disable       Disable Tailscale without uninstalling'
 	@printf '%s\n' '  make syntax                  Run Ansible syntax checks'
-	@printf '%s\n' '  make shutdown CONFIRM=aetherion  Safely shut down the server'
+	@printf '%s\n' '  make shutdown CONFIRM=aetherion  Cordon k3s, stop it, then power off'
 	@printf '%s\n' '  make uninstall CONFIRM=aetherion Guarded k3s uninstall'
 
 .PHONY: install
@@ -65,6 +65,7 @@ tailscale-disable:
 syntax:
 	ansible-playbook --syntax-check playbooks/install.yml
 	ansible-playbook --syntax-check playbooks/status.yml
+	ansible-playbook --syntax-check playbooks/shutdown.yml
 	ansible-playbook --syntax-check playbooks/uninstall.yml
 	ansible-playbook --syntax-check playbooks/tailscale.yml
 	ansible-playbook --syntax-check playbooks/tailscale-enable.yml
@@ -77,7 +78,7 @@ shutdown:
 		printf '%s\n' 'Usage: make shutdown CONFIRM=$(TARGET_HOST)'; \
 		exit 1; \
 	fi
-	ansible -i $(INVENTORY) $(TARGET_HOST) --become -m command -a 'systemctl poweroff'
+	ansible-playbook -i $(INVENTORY) playbooks/shutdown.yml -e confirm_shutdown=true -e confirm_target=$(TARGET_HOST)
 
 .PHONY: uninstall
 uninstall:

@@ -1,0 +1,42 @@
+- name: Safely shut down k3s server
+  hosts: k3s_servers
+  gather_facts: false
+  become: true
+  vars_files:
+    - ../group_vars/k3s.yml
+
+  pre_tasks:
+    - name: Require explicit shutdown confirmation
+      assert:
+        that:
+          - confirm_shutdown | default(false) | bool
+          - confirm_target | default('') == inventory_hostname
+        fail_msg: >-
+          Refusing to shut down. Run with
+          -e confirm_shutdown=true -e confirm_target={{ inventory_hostname }}.
+
+  tasks:
+    - name: Check passwordless sudo
+      command: sudo -n true
+      changed_when: false
+
+    - name: Cordon node before shutdown
+      command: k3s kubectl cordon {{ inventory_hostname }}
+      changed_when: "'cordoned' in cordon_result.stdout or 'already cordoned' not in cordon_result.stdout"
+      failed_when: false
+      register: cordon_result
+
+    - name: Stop k3s cleanly
+      systemd:
+        name: k3s
+        state: stopped
+
+    - name: Sync pending filesystem writes
+      command: sync
+      changed_when: false
+
+    - name: Power off host
+      command: systemctl poweroff
+      async: 1
+      poll: 0
+      changed_when: true

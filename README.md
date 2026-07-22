@@ -17,6 +17,7 @@ Default target:
 - `playbooks/tailscale.yml`: install Tailscale as a LAN subnet router
 - `playbooks/tailscale-disable.yml`: stop Tailscale without uninstalling it
 - `playbooks/tailscale-enable.yml`: start an already-authenticated Tailscale node
+- `playbooks/shutdown.yml`: cordon k3s, stop it cleanly, and power off the server
 - `playbooks/uninstall.yml`: remove `k3s`
 
 ## Requirements
@@ -73,6 +74,8 @@ Safely shut down the server. This target is guarded and requires the target host
 ```bash
 make shutdown CONFIRM=aetherion
 ```
+
+Shutdown cordons the single node, stops `k3s` cleanly, syncs pending filesystem writes, and then powers off the host. It does not drain pods because this is a single-node cluster and there is nowhere else to reschedule them.
 
 Run local syntax checks:
 
