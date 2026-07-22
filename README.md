@@ -43,6 +43,45 @@ Main variables:
 
 ## Usage
 
+Most common commands are available through `make`:
+
+```bash
+make help
+make status
+make nodes
+make pods
+make apps
+make top
+```
+
+Install or reconcile the cluster:
+
+```bash
+make install
+```
+
+Manage Tailscale:
+
+```bash
+make tailscale AUTH_KEY=tskey-auth-REPLACE_ME
+make tailscale-disable
+make tailscale-enable
+```
+
+Safely shut down the server. This target is guarded and requires the target hostname:
+
+```bash
+make shutdown CONFIRM=aetherion
+```
+
+Run local syntax checks:
+
+```bash
+make syntax
+```
+
+Raw Ansible commands are still shown below for clarity.
+
 Install the cluster:
 
 ```bash
