@@ -13,6 +13,7 @@ help:
 	@printf '%s\n' '  make pods                    Show all pods'
 	@printf '%s\n' '  make apps                    Show Argo CD apps'
 	@printf '%s\n' '  make top                     Show node and pod resource usage'
+	@printf '%s\n' '  make uncordon                Allow Kubernetes scheduling after boot'
 	@printf '%s\n' '  make tailscale AUTH_KEY=...   Install/configure Tailscale subnet router'
 	@printf '%s\n' '  make tailscale-enable        Enable existing Tailscale node'
 	@printf '%s\n' '  make tailscale-disable       Disable Tailscale without uninstalling'
@@ -44,6 +45,10 @@ apps:
 top:
 	kubectl --kubeconfig $(KUBECONFIG) top nodes
 	kubectl --kubeconfig $(KUBECONFIG) top pods -A --sort-by=cpu
+
+.PHONY: uncordon
+uncordon:
+	kubectl --kubeconfig $(KUBECONFIG) uncordon $(TARGET_HOST)
 
 .PHONY: tailscale
 tailscale:

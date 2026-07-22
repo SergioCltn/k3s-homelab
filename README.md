@@ -77,6 +77,12 @@ make shutdown CONFIRM=aetherion
 
 Shutdown cordons the single node, stops `k3s` cleanly, syncs pending filesystem writes, and then powers off the host. It does not drain pods because this is a single-node cluster and there is nowhere else to reschedule them.
 
+After the server boots again, uncordon the node so Kubernetes can schedule pods normally:
+
+```bash
+make uncordon
+```
+
 Run local syntax checks:
 
 ```bash
